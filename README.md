@@ -1,69 +1,54 @@
-# React + TypeScript + Vite
+# Order Calculator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ứng dụng tính toán chia phí và giảm giá cho các đơn hàng được xây dựng bằng React + TypeScript.
 
-Currently, two official plugins are available:
+## Tính năng
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- ✅ Thêm/xóa đơn hàng động
+- ✅ Tính toán phí thêm theo tỷ lệ
+- ✅ Chia đều giảm giá cho tất cả đơn hàng
+- ✅ Hiển thị kết quả chi tiết cho từng đơn hàng
+- ✅ Giao diện responsive, thân thiện với mobile
+- ✅ Thiết kế đơn giản, dễ sử dụng
 
-## Expanding the ESLint configuration
+## Công nghệ sử dụng
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React 19** - UI Framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **CSS3** - Styling
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Cài đặt và chạy
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+```bash
+# Clone repository
+git clone https://github.com/[your-username]/order-calculator.git
+cd order-calculator
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Cài đặt dependencies
+npm install
+
+# Chạy development server
+npm run dev
+
+# Build cho production
+npm run build
+
+# Deploy lên GitHub Pages
+npm run deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Demo
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Truy cập: [https://[your-username].github.io/order-calculator](https://[your-username].github.io/order-calculator)
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Cách sử dụng
+
+1. **Nhập đơn hàng**: Thêm số tiền cho từng đơn hàng
+2. **Cấu hình phí**: Nhập phí thêm và tổng giảm giá
+3. **Tính toán**: Nhấn nút "Tính toán" để xem kết quả
+4. **Xem kết quả**: Phần kết quả hiển thị chi tiết cho từng đơn hàng
+
+## License
+
+MIT License
