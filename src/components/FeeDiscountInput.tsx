@@ -3,7 +3,7 @@ import { useState } from 'react';
 interface FeeDiscountInputProps {
   label: string;
   value: number;
-  onChange: (value: number) => void;
+  onChange: (value: number | string) => void;
   placeholder: string;
   color: 'green' | 'red';
 }
@@ -42,16 +42,37 @@ const FeeDiscountInput = ({ label, value, onChange, placeholder, color }: FeeDis
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
-    const numericValue = parseCurrency(inputValue);
     
     setDisplayValue(inputValue);
-    onChange(numericValue);
     
-    // Tạo gợi ý mới nếu giá trị > 0 và khác với giá trị hiện tại
-    if (numericValue > 0 && numericValue !== value) {
-      setSuggestions(generateSuggestions(numericValue));
-    } else if (numericValue === 0) {
-      setSuggestions([]);
+    // Kiểm tra nếu input chứa toán tử
+    if (/[+\-*/()]/.test(inputValue)) {
+      // Gửi biểu thức trực tiếp để tính toán
+      onChange(inputValue);
+      
+      // Tạo suggestions cho toán tử
+      try {
+        // Tính toán kết quả để tạo suggestions
+        const result = new Function('return ' + inputValue.replace(/×/g, '*').replace(/÷/g, '/'))();
+        if (typeof result === 'number' && !isNaN(result) && result > 0) {
+          setSuggestions(generateSuggestions(result));
+        } else {
+          setSuggestions([]);
+        }
+      } catch {
+        setSuggestions([]);
+      }
+    } else {
+      // Xử lý như số thông thường
+      const numericValue = parseCurrency(inputValue);
+      onChange(numericValue);
+      
+      // Tạo gợi ý mới nếu giá trị > 0 và khác với giá trị hiện tại
+      if (numericValue > 0 && numericValue !== value) {
+        setSuggestions(generateSuggestions(numericValue));
+      } else if (numericValue === 0) {
+        setSuggestions([]);
+      }
     }
   };
 
@@ -73,6 +94,26 @@ const FeeDiscountInput = ({ label, value, onChange, placeholder, color }: FeeDis
     onChange(suggestedAmount);
     setDisplayValue(formatCurrency(suggestedAmount));
     setSuggestions([]); // Ẩn suggestions sau khi click
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      // Tính toán biểu thức nếu có toán tử
+      if (/[+\-*/()]/.test(displayValue)) {
+        try {
+          const result = new Function('return ' + displayValue.replace(/×/g, '*').replace(/÷/g, '/'))();
+          if (typeof result === 'number' && !isNaN(result)) {
+            onChange(result);
+            setDisplayValue(formatCurrency(result));
+            setSuggestions([]);
+          }
+        } catch {
+          // Nếu có lỗi, không làm gì
+        }
+      }
+      // Blur để ẩn suggestions
+      e.currentTarget.blur();
+    }
   };
 
   const colorClasses = {
@@ -116,6 +157,7 @@ const FeeDiscountInput = ({ label, value, onChange, placeholder, color }: FeeDis
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
+          onKeyPress={handleKeyPress}
         />
       </div>
       

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import OrderInput from './OrderInput';
 import FeeDiscountInput from './FeeDiscountInput';
 import OrderResult from './OrderResult';
+import { useToast } from './ToastContext';
 
 interface Order {
   id: number;
@@ -24,12 +25,67 @@ interface CalculationResult {
   totalFinal: number;
 }
 
+// Hàm tính toán biểu thức toán học
+const evaluateExpression = (expression: string): number => {
+  try {
+    // Loại bỏ khoảng trắng
+    const cleanExpression = expression.replace(/\s/g, '');
+    
+    // Kiểm tra nếu chỉ là số
+    if (/^\d+(\.\d+)?$/.test(cleanExpression)) {
+      return parseFloat(cleanExpression);
+    }
+    
+    // Thay thế các toán tử để JavaScript có thể hiểu
+    const processedExpression = cleanExpression
+      .replace(/×/g, '*')  // Thay × thành *
+      .replace(/÷/g, '/')  // Thay ÷ thành /
+      .replace(/\(/g, '(') // Đảm bảo dấu ngoặc đơn
+      .replace(/\)/g, ')'); // Đảm bảo dấu ngoặc đơn
+    
+    // Kiểm tra tính hợp lệ của biểu thức
+    if (!/^[\d+\-*/().]+$/.test(processedExpression)) {
+      throw new Error('Biểu thức chứa ký tự không hợp lệ');
+    }
+    
+    // Kiểm tra dấu ngoặc cân bằng
+    const openParens = (processedExpression.match(/\(/g) || []).length;
+    const closeParens = (processedExpression.match(/\)/g) || []).length;
+    if (openParens !== closeParens) {
+      throw new Error('Dấu ngoặc không cân bằng');
+    }
+    
+    // Sử dụng Function constructor để tính toán an toàn
+    const result = new Function('return ' + processedExpression)();
+    
+    if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+      throw new Error('Kết quả không hợp lệ');
+    }
+    
+    return result;
+  } catch (error) {
+    console.warn('Lỗi tính toán biểu thức:', error);
+    return 0;
+  }
+};
+
 const OrderCalculator = () => {
   const [orders, setOrders] = useState<Order[]>([{ id: 1, amount: 0 }]);
   const [additionalFee, setAdditionalFee] = useState<number>(0);
   const [totalDiscount, setTotalDiscount] = useState<number>(0);
   const [results, setResults] = useState<CalculationResult | null>(null);
   const [nextId, setNextId] = useState<number>(2);
+  const { showToast } = useToast();
+
+  const handleFeeChange = (value: number | string) => {
+    const numericValue = typeof value === 'string' ? evaluateExpression(value) : value;
+    setAdditionalFee(numericValue);
+  };
+
+  const handleDiscountChange = (value: number | string) => {
+    const numericValue = typeof value === 'string' ? evaluateExpression(value) : value;
+    setTotalDiscount(numericValue);
+  };
 
   const addOrder = () => {
     setOrders(prev => [...prev, { id: nextId, amount: 0 }]);
@@ -40,23 +96,25 @@ const OrderCalculator = () => {
     if (orders.length > 1) {
       setOrders(prev => prev.filter(order => order.id !== id));
     } else {
-      alert('Phải có ít nhất 1 order!');
+      showToast('Phải có ít nhất 1 order!', 'warning');
     }
   };
 
-  const updateOrderAmount = (id: number, amount: number) => {
+  const updateOrderAmount = (id: number, amount: number | string) => {
+    const numericAmount = typeof amount === 'string' ? evaluateExpression(amount) : amount;
     setOrders(prev => 
       prev.map(order => 
-        order.id === id ? { ...order, amount } : order
+        order.id === id ? { ...order, amount: numericAmount } : order
       )
     );
   };
 
-  const calculateOrders = () => {
+  const calculateOrders = useCallback(() => {
     const orderAmounts = orders.map(order => order.amount);
     
-    if (orderAmounts.some(amount => amount <= 0)) {
-      alert('Vui lòng nhập số tiền hợp lệ cho tất cả orders!');
+    // Chỉ tính toán khi có ít nhất 1 order có số tiền > 0
+    if (orderAmounts.every(amount => amount <= 0)) {
+      setResults(null);
       return;
     }
 
@@ -64,7 +122,7 @@ const OrderCalculator = () => {
     const discountPerOrder = totalDiscount / orders.length;
     
     const calculatedOrders: CalculatedOrder[] = orderAmounts.map((orderAmount, index) => {
-      const feeRatio = orderAmount / totalOriginal;
+      const feeRatio = totalOriginal > 0 ? orderAmount / totalOriginal : 0;
       const feeAmount = additionalFee * feeRatio;
       const finalAmount = orderAmount + feeAmount - discountPerOrder;
       
@@ -86,7 +144,16 @@ const OrderCalculator = () => {
       totalDiscount,
       totalFinal: Math.round(totalFinal * 100) / 100
     });
-  };
+  }, [orders, additionalFee, totalDiscount]);
+
+  // Tự động tính toán khi có thay đổi
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      calculateOrders();
+    }, 300); // Debounce 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [calculateOrders]);
 
   return (
     <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-xl p-8">
@@ -148,16 +215,16 @@ const OrderCalculator = () => {
             <FeeDiscountInput
               label="Phí thêm (VND)"
               value={additionalFee}
-              onChange={setAdditionalFee}
-              placeholder="Nhập phí (VND)"
+              onChange={handleFeeChange}
+              placeholder="Nhập phí hoặc phép tính (VD: 5000+1000)"
               color="green"
             />
             
             <FeeDiscountInput
               label="Tổng giảm giá (VND)"
               value={totalDiscount}
-              onChange={setTotalDiscount}
-              placeholder="Nhập giảm giá (VND)"
+              onChange={handleDiscountChange}
+              placeholder="Nhập giảm giá hoặc phép tính (VD: 2000*0.1)"
               color="red"
             />
           </div>
@@ -166,15 +233,17 @@ const OrderCalculator = () => {
 
       {/* Calculate Button */}
       <div className="mt-6">
-        <button 
-          className="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white py-3 px-6 rounded-lg font-medium text-sm transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-          onClick={calculateOrders}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-          Tính toán
-        </button>
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
+          <div className="flex items-center justify-center gap-2 text-sm text-green-700 mb-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Tính toán tự động + Toán tử
+          </div>
+          <p className="text-xs text-gray-600 text-center">
+            Hỗ trợ phép tính: + - * / () | VD: 1000+500, 2000*1.1, (1000+500)*0.9
+          </p>
+        </div>
       </div>
 
       {/* Results */}
