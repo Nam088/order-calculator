@@ -4,15 +4,20 @@ interface OrderInputProps {
   order: {
     id: number;
     amount: number;
+    displayValue?: string;
+    customerName?: string;
+    itemName?: string;
   };
   index: number;
-  onUpdateAmount: (id: number, amount: number | string) => void;
+  onUpdateAmount: (id: number, amount: number | string, displayValue?: string) => void;
+  onUpdateInfo: (id: number, customerName?: string, itemName?: string) => void;
   onRemove: (id: number) => void;
+  onDuplicate: (id: number) => void;
 }
 
-const OrderInput = ({ order, index, onUpdateAmount, onRemove }: OrderInputProps) => {
+const OrderInput = ({ order, index, onUpdateAmount, onUpdateInfo, onRemove, onDuplicate }: OrderInputProps) => {
   const [suggestions, setSuggestions] = useState<number[]>([]);
-  const [displayValue, setDisplayValue] = useState<string>('');
+  const [displayValue, setDisplayValue] = useState<string>(order.displayValue || '');
 
   const generateSuggestions = (value: number): number[] => {
     if (value <= 0) return [];
@@ -50,7 +55,7 @@ const OrderInput = ({ order, index, onUpdateAmount, onRemove }: OrderInputProps)
     // Kiểm tra nếu input chứa toán tử
     if (/[+\-*/()]/.test(inputValue)) {
       // Gửi biểu thức trực tiếp để tính toán
-      onUpdateAmount(order.id, inputValue);
+      onUpdateAmount(order.id, inputValue, inputValue);
       
       // Tạo suggestions cho toán tử
       try {
@@ -67,7 +72,7 @@ const OrderInput = ({ order, index, onUpdateAmount, onRemove }: OrderInputProps)
     } else {
       // Xử lý như số thông thường
       const numericValue = parseCurrency(inputValue);
-      onUpdateAmount(order.id, numericValue);
+      onUpdateAmount(order.id, numericValue, inputValue);
       
       // Tạo gợi ý mới nếu giá trị > 0 và khác với giá trị hiện tại
       if (numericValue > 0 && numericValue !== order.amount) {
@@ -93,7 +98,7 @@ const OrderInput = ({ order, index, onUpdateAmount, onRemove }: OrderInputProps)
   };
 
   const applySuggestion = (suggestedAmount: number) => {
-    onUpdateAmount(order.id, suggestedAmount);
+    onUpdateAmount(order.id, suggestedAmount, suggestedAmount.toString());
     setDisplayValue(formatCurrency(suggestedAmount));
     setSuggestions([]); // Ẩn suggestions sau khi click
   };
@@ -128,15 +133,26 @@ const OrderInput = ({ order, index, onUpdateAmount, onRemove }: OrderInputProps)
           </svg>
           Order {index + 1}
         </span>
-        <button 
-          className="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
-          onClick={() => onRemove(order.id)}
-          title="Xóa order"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-          </svg>
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className="w-7 h-7 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+            onClick={() => onDuplicate(order.id)}
+            title="Sao chép order"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 2v2H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2V2H8zM6 6h12v12H6V6zm4 2v8h6V8h-6zm2 2h2v4h-2v-4z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button 
+            className="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+            onClick={() => onRemove(order.id)}
+            title="Xóa order"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Input */}
@@ -170,6 +186,26 @@ const OrderInput = ({ order, index, onUpdateAmount, onRemove }: OrderInputProps)
           ))}
         </div>
       )}
+      
+      {/* Customer Info */}
+      <div className="mt-3 space-y-2">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Tên khách hàng"
+            value={order.customerName || ''}
+            onChange={(e) => onUpdateInfo(order.id, e.target.value, order.itemName)}
+          />
+          <input
+            type="text"
+            className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Món ăn"
+            value={order.itemName || ''}
+            onChange={(e) => onUpdateInfo(order.id, order.customerName, e.target.value)}
+          />
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,6 +7,9 @@ import { useToast } from './ToastContext';
 interface Order {
   id: number;
   amount: number;
+  displayValue?: string;
+  customerName?: string;
+  itemName?: string;
 }
 
 interface CalculatedOrder {
@@ -100,11 +103,93 @@ const OrderCalculator = () => {
     }
   };
 
-  const updateOrderAmount = (id: number, amount: number | string) => {
+  const duplicateOrder = (id: number) => {
+    const orderToDuplicate = orders.find(order => order.id === id);
+    if (orderToDuplicate) {
+      const newOrder = { 
+        id: nextId, 
+        amount: orderToDuplicate.amount,
+        displayValue: orderToDuplicate.displayValue || orderToDuplicate.amount.toString()
+      };
+      setOrders(prev => [...prev, newOrder]);
+      setNextId(prev => prev + 1);
+      showToast('Đã sao chép order thành công!', 'success');
+    }
+  };
+
+  const exportToTxt = () => {
+    if (!results) {
+      showToast('Vui lòng tính toán trước khi xuất file!', 'warning');
+      return;
+    }
+
+    const timestamp = new Date().toLocaleString('vi-VN');
+    let content = `ORDER CALCULATOR REPORT\n`;
+    content += `Thời gian: ${timestamp}\n`;
+    content += `========================================\n\n`;
+    
+    // Thông tin orders
+    content += `DANH SÁCH ĐƠN HÀNG:\n`;
+    orders.forEach((order, index) => {
+      const name = order.customerName || `Khách ${index + 1}`;
+      const item = order.itemName || 'Món ăn';
+      content += `${index + 1}. ${name} - ${item}: ${order.amount.toLocaleString()}đ\n`;
+    });
+    
+    content += `\nTỔNG KẾT:\n`;
+    content += `- Tổng ban đầu: ${results.totalOriginal.toLocaleString()}đ\n`;
+    content += `- Phí thêm: ${results.totalFee.toLocaleString()}đ\n`;
+    content += `- Giảm giá: ${results.totalDiscount.toLocaleString()}đ\n`;
+    content += `- Tổng cuối: ${results.totalFinal.toLocaleString()}đ\n\n`;
+    
+    // Chi tiết từng order
+    content += `CHI TIẾT TÍNH TOÁN:\n`;
+    results.orders.forEach((order, index) => {
+      const originalOrder = orders[index];
+      const name = originalOrder?.customerName || `Khách ${index + 1}`;
+      const item = originalOrder?.itemName || 'Món ăn';
+      content += `${index + 1}. ${name} - ${item}\n`;
+      content += `   - Số tiền gốc: ${order.originalAmount.toLocaleString()}đ\n`;
+      content += `   - Phí: ${order.feeAmount.toLocaleString()}đ\n`;
+      content += `   - Giảm giá: ${order.discountAmount.toLocaleString()}đ\n`;
+      content += `   - Thành tiền: ${order.finalAmount.toLocaleString()}đ\n\n`;
+    });
+
+    // Tạo và tải file
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `order-report-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast('Đã xuất file thành công!', 'success');
+  };
+
+  const updateOrderAmount = (id: number, amount: number | string, displayValue?: string) => {
     const numericAmount = typeof amount === 'string' ? evaluateExpression(amount) : amount;
     setOrders(prev => 
       prev.map(order => 
-        order.id === id ? { ...order, amount: numericAmount } : order
+        order.id === id ? { 
+          ...order, 
+          amount: numericAmount,
+          displayValue: displayValue || (typeof amount === 'string' ? amount : amount.toString())
+        } : order
+      )
+    );
+  };
+
+  const updateOrderInfo = (id: number, customerName?: string, itemName?: string) => {
+    setOrders(prev => 
+      prev.map(order => 
+        order.id === id ? { 
+          ...order, 
+          customerName: customerName || order.customerName,
+          itemName: itemName || order.itemName
+        } : order
       )
     );
   };
@@ -186,7 +271,9 @@ const OrderCalculator = () => {
                 order={order}
                 index={index}
                 onUpdateAmount={updateOrderAmount}
+                onUpdateInfo={updateOrderInfo}
                 onRemove={removeOrder}
+                onDuplicate={duplicateOrder}
               />
             ))}
           </div>
@@ -249,12 +336,23 @@ const OrderCalculator = () => {
       {/* Results */}
       {results && (
         <div className="mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border-l-4 border-blue-500 shadow-md">
-          <h3 className="text-lg font-bold text-gray-800 mb-4 text-center flex items-center justify-center gap-2">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Kết quả tính toán
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Kết quả tính toán
+            </h3>
+            <button
+              onClick={exportToTxt}
+              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Xuất TXT
+            </button>
+          </div>
           
           {/* Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

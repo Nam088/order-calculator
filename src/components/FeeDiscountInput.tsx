@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface FeeDiscountInputProps {
   label: string;
@@ -7,6 +7,50 @@ interface FeeDiscountInputProps {
   placeholder: string;
   color: 'green' | 'red';
 }
+
+// Hàm tính toán biểu thức toán học
+const evaluateExpression = (expression: string): number => {
+  try {
+    // Loại bỏ khoảng trắng
+    const cleanExpression = expression.replace(/\s/g, '');
+    
+    // Kiểm tra nếu chỉ là số
+    if (/^\d+(\.\d+)?$/.test(cleanExpression)) {
+      return parseFloat(cleanExpression);
+    }
+    
+    // Thay thế các toán tử để JavaScript có thể hiểu
+    const processedExpression = cleanExpression
+      .replace(/×/g, '*')  // Thay × thành *
+      .replace(/÷/g, '/')  // Thay ÷ thành /
+      .replace(/\(/g, '(') // Đảm bảo dấu ngoặc đơn
+      .replace(/\)/g, ')'); // Đảm bảo dấu ngoặc đơn
+    
+    // Kiểm tra tính hợp lệ của biểu thức
+    if (!/^[\d+\-*/().]+$/.test(processedExpression)) {
+      throw new Error('Biểu thức chứa ký tự không hợp lệ');
+    }
+    
+    // Kiểm tra dấu ngoặc cân bằng
+    const openParens = (processedExpression.match(/\(/g) || []).length;
+    const closeParens = (processedExpression.match(/\)/g) || []).length;
+    if (openParens !== closeParens) {
+      throw new Error('Dấu ngoặc không cân bằng');
+    }
+    
+    // Sử dụng Function constructor để tính toán an toàn
+    const result = new Function('return ' + processedExpression)();
+    
+    if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+      throw new Error('Kết quả không hợp lệ');
+    }
+    
+    return result;
+  } catch (error) {
+    console.warn('Lỗi tính toán biểu thức:', error);
+    return 0;
+  }
+};
 
 const FeeDiscountInput = ({ label, value, onChange, placeholder, color }: FeeDiscountInputProps) => {
   const [suggestions, setSuggestions] = useState<number[]>([]);
@@ -47,19 +91,14 @@ const FeeDiscountInput = ({ label, value, onChange, placeholder, color }: FeeDis
     
     // Kiểm tra nếu input chứa toán tử
     if (/[+\-*/()]/.test(inputValue)) {
-      // Gửi biểu thức trực tiếp để tính toán
-      onChange(inputValue);
+      // Tính toán và gửi kết quả
+      const result = evaluateExpression(inputValue);
+      onChange(result);
       
       // Tạo suggestions cho toán tử
-      try {
-        // Tính toán kết quả để tạo suggestions
-        const result = new Function('return ' + inputValue.replace(/×/g, '*').replace(/÷/g, '/'))();
-        if (typeof result === 'number' && !isNaN(result) && result > 0) {
-          setSuggestions(generateSuggestions(result));
-        } else {
-          setSuggestions([]);
-        }
-      } catch {
+      if (result > 0) {
+        setSuggestions(generateSuggestions(result));
+      } else {
         setSuggestions([]);
       }
     } else {
@@ -100,15 +139,11 @@ const FeeDiscountInput = ({ label, value, onChange, placeholder, color }: FeeDis
     if (e.key === 'Enter') {
       // Tính toán biểu thức nếu có toán tử
       if (/[+\-*/()]/.test(displayValue)) {
-        try {
-          const result = new Function('return ' + displayValue.replace(/×/g, '*').replace(/÷/g, '/'))();
-          if (typeof result === 'number' && !isNaN(result)) {
-            onChange(result);
-            setDisplayValue(formatCurrency(result));
-            setSuggestions([]);
-          }
-        } catch {
-          // Nếu có lỗi, không làm gì
+        const result = evaluateExpression(displayValue);
+        if (result !== 0) {
+          onChange(result);
+          setDisplayValue(formatCurrency(result));
+          setSuggestions([]);
         }
       }
       // Blur để ẩn suggestions
