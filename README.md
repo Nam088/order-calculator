@@ -22,8 +22,8 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/[your-username]/order-calculator.git
-cd order-calculator
+git clone https://github.com/Nam077/order-caculator.git
+cd order-caculator
 
 # Cài đặt dependencies
 npm install
@@ -40,7 +40,7 @@ npm run deploy
 
 ## Demo
 
-Truy cập: [https://[your-username].github.io/order-calculator](https://[your-username].github.io/order-calculator)
+Truy cập: [https://Nam077.github.io/order-caculator](https://Nam077.github.io/order-caculator)
 
 ## Cách sử dụng
 

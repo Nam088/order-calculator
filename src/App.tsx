@@ -1,9 +1,8 @@
-import './App.css'
 import OrderCalculator from './components/OrderCalculator'
 
 function App() {
   return (
-    <div className="App">
+    <div className="min-h-screen bg-gray-50 py-4 px-4">
       <OrderCalculator />
     </div>
   )
